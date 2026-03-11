@@ -1,0 +1,261 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "PLCopyFromRawToCleansed"
+        },
+        "AzureDataLakeStorageLinkedService_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorageLinkedService'"
+        },
+        "AzureDataLakeStorageLinkedService_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://datarev.dfs.core.windows.net/"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorageLinkedService')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorageLinkedService_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('AzureDataLakeStorageLinkedService_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_raw_to_cleansed')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "PL_raw_to_cleansed",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "df_raw_to_cleansed",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "employeeraw": {},
+                                    "destination": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/df_raw_to_cleansed')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/df_raw_to_cleansed')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "employeesurvey",
+                                "type": "DatasetReference"
+                            },
+                            "name": "employeeraw"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "CleansedDestination",
+                                "type": "DatasetReference"
+                            },
+                            "name": "destination"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "AddRole"
+                        },
+                        {
+                            "name": "DropOldRoleColumns"
+                        },
+                        {
+                            "name": "RemoveCommunicationsOffice"
+                        }
+                    ],
+                    "scriptLines": [
+                        "source(output(",
+                        "          {Response ID} as short,",
+                        "          Status as string,",
+                        "          Department as string,",
+                        "          Director as boolean,",
+                        "          Manager as boolean,",
+                        "          Supervisor as boolean,",
+                        "          Staff as boolean,",
+                        "          Question as string,",
+                        "          Response as short,",
+                        "          {Response Text} as string",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false) ~> employeeraw",
+                        "employeeraw derive(Role = case(     Director == true(), 'Director',     Manager == true(), 'Manager',     Supervisor == true(), 'Supervisor',     Staff == true(), 'Staff',     'Staff' )) ~> AddRole",
+                        "AddRole select(mapColumn(",
+                        "          {Response ID},",
+                        "          Status,",
+                        "          Department,",
+                        "          Question,",
+                        "          Response,",
+                        "          {Response Text},",
+                        "          Role",
+                        "     ),",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> DropOldRoleColumns",
+                        "DropOldRoleColumns filter(Department != 'Communications Office') ~> RemoveCommunicationsOffice",
+                        "RemoveCommunicationsOffice sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     umask: 0022,",
+                        "     preCommands: [],",
+                        "     postCommands: [],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> destination"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/employeesurvey')]",
+                "[concat(variables('factoryId'), '/datasets/CleansedDestination')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/employeesurvey')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorageLinkedService",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Excel",
+                "typeProperties": {
+                    "sheetName": "HR Survey Reponses",
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": "HR Employee Survey Responses.xlsx",
+                        "fileSystem": "rawsource"
+                    },
+                    "firstRowAsHeader": true
+                },
+                "schema": [
+                    {
+                        "name": "Response ID",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Status",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Department",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Director",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Manager",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Supervisor",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Staff",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Question",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Response",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Response Text",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorageLinkedService')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/CleansedDestination')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorageLinkedService",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "cleansed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorageLinkedService')]"
+            ]
+        }
+    ]
+}

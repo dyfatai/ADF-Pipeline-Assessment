@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "factoryName": {
+      "value": "REPLACE_WITH_UNIQUE_FACTORY_NAME"
+    },
+    "storageAccountName": {
+      "value": "REPLACE_WITH_UNIQUE_STORAGE_NAME"
+    },
+    "storageSku": {
+      "value": "Standard_LRS"
+    },
+    "enableHns": {
+      "value": true
+    }
+  }
+}
