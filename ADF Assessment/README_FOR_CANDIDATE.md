@@ -67,6 +67,6 @@ How to run and test
 Deliverable
 
 - A working pipeline (or dataflow + wrapper pipeline) in the deployed Data Factory that implements the above.
-- A short readme or comment in the pipeline/dataflow that explains the main transformation steps.
+
 
 Good luck — if the mapping language is unfamiliar, use the Transformations GUI in Mapping Data Flows to build the required transformations.
