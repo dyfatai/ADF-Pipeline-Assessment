@@ -52,6 +52,8 @@ Validation tests (what the interviewer will check)
 - The pipeline should complete successfully (look at activity run history).
 - Bonus checks (nice-to-have): handle null/empty values gracefully; log counts (rows in -> rows out); include a small data quality check step that fails if the output row count is zero.
 
+- After a successful pipeline run, the original source file should be copied to the `archive` container (same filename). This verifies the pipeline performed an after-success archival step.
+
 Edge cases to consider
 
 - The Excel sheet might contain empty rows or cells — ensure your dataflow handles these (skip or filter out if necessary).
@@ -65,6 +67,7 @@ How to run and test
 - Publish changes.
 - Run the pipeline `PL_raw_to_cleansed` (or create a test pipeline that executes the dataflow) and wait for completion.
 - Check output in the `cleansed` container (download a sample CSV) to verify Role column, no old role columns, and no Communications Office rows.
+ - Also check the `archive` container to confirm the original file `HR Employee Survey Responses.xlsx` was copied there after a successful run.
 
 Deliverable
 

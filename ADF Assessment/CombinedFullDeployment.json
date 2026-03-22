@@ -51,6 +51,13 @@
       "properties": {}
     },
     {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2019-06-01",
+      "name": "[concat(parameters('storageAccountName'), '/default/archive')]",
+      "dependsOn": [ "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]" ],
+      "properties": {}
+    },
+    {
       "name": "[parameters('factoryName')]",
       "type": "Microsoft.DataFactory/factories",
       "apiVersion": "2018-06-01",
@@ -120,6 +127,40 @@
                   { "name": "Response", "type": "String" },
                   { "name": "Response Text", "type": "String" }
                 ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('factoryName'), 'AzureDataLakeStorageLinkedService')]"
+              ]
+            },
+            {
+              "name": "[concat(parameters('factoryName'), '/RawBinarySource')]",
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "properties": {
+                "linkedServiceName": { "referenceName": "AzureDataLakeStorageLinkedService", "type": "LinkedServiceReference" },
+                "annotations": [],
+                "type": "Binary",
+                "typeProperties": {
+                  "location": { "type": "AzureBlobFSLocation", "fileSystem": "rawsource", "fileName": "HR Employee Survey Responses.xlsx" }
+                },
+                "schema": []
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('factoryName'), 'AzureDataLakeStorageLinkedService')]"
+              ]
+            },
+            {
+              "name": "[concat(parameters('factoryName'), '/ArchiveDestination')]",
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "properties": {
+                "linkedServiceName": { "referenceName": "AzureDataLakeStorageLinkedService", "type": "LinkedServiceReference" },
+                "annotations": [],
+                "type": "Binary",
+                "typeProperties": {
+                  "location": { "type": "AzureBlobFSLocation", "fileSystem": "archive", "fileName": "HR Employee Survey Responses.xlsx" }
+                },
+                "schema": []
               },
               "dependsOn": [
                 "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('factoryName'), 'AzureDataLakeStorageLinkedService')]"
@@ -212,6 +253,23 @@
                       "compute": { "coreCount": 8, "computeType": "General" },
                       "traceLevel": "Fine"
                     }
+                  },
+                  {
+                    "name": "CopyToArchive",
+                    "type": "Copy",
+                    "dependsOn": [
+                      {
+                        "activity": "PL_raw_to_cleansed",
+                        "dependencyConditions": [ "Succeeded" ]
+                      }
+                    ],
+                    "policy": { "timeout": "7.00:00:00", "retry": 0, "retryIntervalInSeconds": 30, "secureOutput": false, "secureInput": false },
+                    "typeProperties": {
+                      "source": { "type": "BinarySource" },
+                      "sink": { "type": "BinarySink" }
+                    },
+                    "inputs": [ { "referenceName": "RawBinarySource", "type": "DatasetReference" } ],
+                    "outputs": [ { "referenceName": "ArchiveDestination", "type": "DatasetReference" } ]
                   }
                 ],
                 "policy": { "elapsedTimeMetric": {} },
