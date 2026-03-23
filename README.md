@@ -1,10 +1,10 @@
 Purpose
 
-This document explains how to deploy the assessment environment (Storage, Data Factory, datasets, dataflow and pipeline), how to upload the sample data, and how to remove the assessment artifacts when finished.
+This document explains how to deploy the assessment environment (Storage, Data Factory, datasets, dataflow and pipeline), how to upload the sample data, and how to remove the assessment artifacts when finished. This document is simply to show what the full pipeline sould look like after deployment. Upon full deployment, the pipeline and dataflow acticvities should be fully deteleted before candidate test.
 
 Files in `arm_template/`
-- `CombinedFullDeployment.json` — creates Storage (ADLS Gen2), containers `rawsource` & `cleansed`, Data Factory, linked service, datasets, dataflow and pipeline.
-- `CombinedFullDeployment.parameters.json` — edit placeholders before deploy.
+- `CombinedFullDeployment.json` - creates Storage (ADLS Gen2), containers `rawsource` & `cleansed`, Data Factory, linked service, datasets, dataflow and pipeline.
+- `CombinedFullDeployment.parameters.json` - edit placeholders before deploy.
 
 Prerequisites
 - Azure CLI (az) or Portal access; permission to create resources in the target subscription/resource group.
@@ -14,7 +14,7 @@ Deploy (Portal UI)
 1. Portal -> Resource groups -> Create new resource group (or use an empty one).
 2. In the resource group blade click `Deploy a custom template` -> `Build your own template in the editor`.
 3. Paste the contents of `CombinedFullDeployment.json` and Save.
-4. Provide parameter values (or upload `CombinedFullDeployment.parameters.json`) — set a unique `factoryName` and a globally unique `storageAccountName`.
+4. Provide parameter values (or upload `CombinedFullDeployment.parameters.json`) - set a unique `factoryName` and a globally unique `storageAccountName`.
 5. Deploy and wait for completion.
 
 Deploy (CLI)
